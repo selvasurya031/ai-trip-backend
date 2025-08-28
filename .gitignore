@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment variables
+.env
+*.env
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Logs
+*.log
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+*.cover
+
+# Pytest
+.cache
+pytest_cache/
+
+# Migrations
+migrations/
+
+# Docker
+*.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Virtual environment
+venv/
+env/
+ENV/
+venv.bak/
+env.bak/
