@@ -1,23 +1,21 @@
 import os
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import PlainTextResponse # Changed from HTMLResponse
+from fastapi.responses import PlainTextResponse 
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Literal # Import Literal for specific string values
+from typing import Literal 
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+import uvicorn
 
-# Load environment variables
+
 load_dotenv()
 
 app = FastAPI()
 
-# Configure CORS to allow requests from your Next.js frontend
 origins = [
-    "http://localhost:3000",  # For local development
-    "https://v0-create-it-eight.vercel.app/"
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
@@ -27,8 +25,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Pydantic model for incoming request data
 class TravelFormData(BaseModel):
     destination: str
     departureCity: str
@@ -36,21 +32,16 @@ class TravelFormData(BaseModel):
     returnDate: str
     flightBudget: str
     accommodationBudget: str
-    # Use Literal types to match frontend's Select component values
     tripType: Literal["leisure", "business", "adventure", "romantic", "family", "solo"]
     numberOfPeople: Literal["1", "2", "3", "4", "5", "6+"]
     rentCar: bool
-    needsFlight: bool # Added needsFlight as per frontend
-    # Removed 'currency' field as it's not present in the frontend's formData
-
-# Initialize the Generative AI model
+    needsFlight: bool 
 google_api_key = os.getenv("GOOGLE_API_KEY")
 if not google_api_key:
     raise ValueError("GOOGLE_API_KEY environment variable not set. Please set it in your .env file.")
 
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=google_api_key)
 
-# Define the prompt template for the AI agent
 prompt_template = PromptTemplate(
     input_variables=[
         "destination", "departureCity", "departureDate", "returnDate",
@@ -84,13 +75,11 @@ Return the output in a clean, readable plain text format. Use clear headings and
 """
 )
 
-# Create the LLMChain
-llm_chain = LLMChain(llm=llm, prompt=prompt_template)
+chain = prompt_template | llm
 
-@app.post("/travel-plan", response_class=PlainTextResponse) # Changed response_class to PlainTextResponse
+@app.post("/travel-plan", response_class=PlainTextResponse)
 async def create_travel_plan(form_data: TravelFormData):
     try:
-        # Prepare data for the LLMChain
         llm_input = {
             "destination": form_data.destination,
             "departureCity": form_data.departureCity,
@@ -98,30 +87,24 @@ async def create_travel_plan(form_data: TravelFormData):
             "returnDate": form_data.returnDate,
             "flightBudget": form_data.flightBudget,
             "accommodationBudget": form_data.accommodationBudget,
-            "tripType": form_data.tripType, # Directly use tripType
-            "numberOfPeople": form_data.numberOfPeople, # Directly use numberOfPeople
-            "rentCar": "Yes" if form_data.rentCar else "No",  # Convert boolean to string for prompt
-            "needsFlight": "Yes" if form_data.needsFlight else "No", # Convert boolean to string for prompt
+            "tripType": form_data.tripType, 
+            "numberOfPeople": form_data.numberOfPeople,
+            "rentCar": "Yes" if form_data.rentCar else "No",  
+            "needsFlight": "Yes" if form_data.needsFlight else "No", 
         }
 
-        # Invoke the LLMChain to get the response
-        response = await llm_chain.ainvoke(llm_input)
+        response = await chain.ainvoke(llm_input)
 
-        # The response from LLMChain is a dictionary, extract the 'text' key
-        generated_text = response.get('text', '')
-
-        # No HTML cleaning needed if the prompt is adjusted to return plain text
-        # However, some basic newline handling might still be useful if the LLM adds extra ones
-        cleaned_text = generated_text.strip() # Remove leading/trailing whitespace
+        generated_text = response.content
+        cleaned_text = generated_text.strip() 
 
         return cleaned_text
     except Exception as e:
-        # Log the error for debugging purposes
         print(f"Error processing travel plan request: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-# Add a root endpoint for health check or basic info
 @app.get("/")
 async def read_root():
     return {"message": "TravelPlan FastAPI backend is running!"}
 
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="localhost", port=8000, reload=True)

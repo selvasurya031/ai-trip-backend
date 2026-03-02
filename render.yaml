@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: fastapi-app
-    env: docker
-    plan: free
-    docker:
-      dockerfilePath: ./Dockerfile
-      context: .
